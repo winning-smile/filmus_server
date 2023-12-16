@@ -54,17 +54,25 @@ def serialize_url(url):
 
     return json.dumps(UrlReference(url).__str__(), separators=(',', ':'))
 
+def intersect_dicts(dict1, dict2):
+    return {k: dict1[k] for k in dict1 if k in dict2 and dict1[k] == dict2[k]}
+
 class FilmusServer:
     def __init__(self):
         self.films = []
         self.film_jsons = []
-        self.host = "localhost"
-        self.port = 6666
+        self.host = "192.168.0.12"
+        self.port = 50000
         self.thread_count = 0
         self.api_url = "https://kinopoiskapiunofficial.tech/api/v2.2/films?"
         self.api_token = "6a0de868-081f-4100-b6a2-d8aa65dd3296"
         self.api_header = {"X-API-KEY": self.api_token}
         self.api_req_data = []
+        self.first_data = []
+        self.second_data = []
+        self.result = []
+        self.res_film_jsons = []
+        self.clients = []
 
         self.start_server(self.host, self.port)
 
@@ -72,6 +80,11 @@ class FilmusServer:
         self.films.clear()
         self.film_jsons.clear()
         self.api_req_data.clear()
+        self.first_data.clear()
+        self.second_data.clear()
+        self.result.clear()
+        self.res_film_jsons.clear()
+        self.clients.clear()
 
     def client_handler(self, connection):
         data = connection.recv(2048)
@@ -105,7 +118,7 @@ class FilmusServer:
 
             # ОТПРАВЛЯЕМ JSON'Ы КЛИЕНТУ
             for film in self.film_jsons:
-                print(film)
+                print("data sended")
                 connection.sendall(film.encode())
 
             connection.close()
@@ -119,8 +132,38 @@ class FilmusServer:
 
         elif flag == "result":
             data = connection.recv(2048)
-            print(data.decode())
-            print(json.loads(data[2:].decode('utf-8')))
+            if not self.first_data:
+                self.first_data = json.loads(data[2:].decode('utf-8'))
+                print("first data recieved")
+                print(self.first_data)
+            else:
+                self.second_data = json.loads(data[2:].decode('utf-8'))
+                print("second data recieved")
+                print(self.second_data)
+
+        elif flag == "final":
+            self.clients.append(connection)
+
+            if self.first_data and self.second_data:
+                first = {key: val for key, val in self.first_data.items() if val == "Right"}
+                second = {key: val for key, val in self.second_data.items() if val == "Right"}
+                final = intersect_dicts(first, second)
+
+                for film in self.films:
+                    for key in final.keys():
+                        if str(film.id) == str(key):
+                            print(f"id={film.id}, key={key}")
+                            self.result.append(film)
+
+                for film in self.result:
+                    self.res_film_jsons.append(json.dumps(asdict(film)))
+
+                for conn in self.clients:
+                    for film in self.res_film_jsons:
+                        print(f"data send to {conn}")
+                        conn.sendall(film.encode())
+
+                    conn.close()
 
     def accept_connections(self, server_socket):
         client, address = server_socket.accept()
