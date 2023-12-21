@@ -1,6 +1,7 @@
 import json
 from dataclasses import dataclass, asdict
 from datetime import datetime
+from urllib.parse import quote
 
 adict = {"0": "A", "1": "B", "2": "C", "3": "D", "4": "E", "5": "F", "6": "G", "7": "H", "8": "I", "9": "J"}
 
@@ -102,29 +103,28 @@ def make_query(limit, sortField, genre_plus, yearFrom="default", yearTo="default
     if genre_minus == "default":
         genre_query = ""
         if len(genre_plus) == 1:
-            genre_query = f"&genres.name={genre_plus[0]}"
+            genre_query = f"&genres.name={quote(genre_plus[0])}"
 
         else:
             for genre in genre_plus:
-                genre_query += f"&genres.name=+{genre}"
+                genre_query += f"&genres.name=%2B{quote(genre)}"
 
     else:
         if len(genre_plus) == 1:
-            genre_query = f"&genres.name=+{genre_plus}"
+            genre_query = f"&genres.name=%2B{quote(genre_plus[0])}"
             for genre in genre_minus:
-                genre_query += f"&genres.name=!{genre}"
+                genre_query += f"&genres.name=%21{quote(genre)}"
 
         else:
             genre_query = ""
             for genre in genre_plus:
-                genre_query += f"&genres.name=+{genre}"
+                genre_query += f"&genres.name=%2B{quote(genre)}"
             for genre in genre_minus:
-                genre_query += f"&genres.name=!{genre}"
+                genre_query += f"&genres.name=%21{quote(genre)}"
 
     query = "{0}{1}{2}{3}&{4}&{5}&{6}&{7}&{8}{9}".format(url, limit_query, select_query, null_query, sort_query,
                                                           sort_type_query,
                                                           status_query, year_query, rate_query, genre_query)
-
     return query
 
 
